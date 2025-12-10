@@ -107,6 +107,10 @@ try {
                 $Set = 'Backofen-Set';
             } elseif ($SetType == "423;428") {
                 $Set = 'Herdset';
+            } elseif ($SetType == "430;432") {
+                $Set = 'Spülenset';
+            } elseif ($SetType == "mikrowellenset") {
+                $Set = 'Mikrowellenset';
             } else {
                 $Set = $SetType;
             }
