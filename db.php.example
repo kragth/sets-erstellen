@@ -1,0 +1,30 @@
+<?php 
+// db.php
+// Projekt: Set-Artikel Generator – zentrale Datenbankverbindung für alle Skripte
+
+$host = 'localhost';          // Datenbankserver
+$db   = '';           // Datenbankname
+$user = '';       // MySQL-Benutzername (bitte anpassen!)
+$pass = '';       // MySQL-Passwort (bitte anpassen!)
+$charset = 'utf8mb4';         // Charset wie bestehende Tabellen (jetzt UTF-8!)
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Fehler als Exception
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Arrays als Rückgabe
+    PDO::ATTR_EMULATE_PREPARES   => false,                  // "echte" Prepared Statements
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    // WICHTIG: Zeichensatz auch für die Verbindung erzwingen!
+    $pdo->exec("SET NAMES 'utf8mb4'");
+} catch (\PDOException $e) {
+    die('Verbindung zur Datenbank fehlgeschlagen: ' . $e->getMessage());
+}
+
+$token = "";
+
+$mailEmpfaenger = ''; // Empfänger für Fehler-Mails
+?>
+
