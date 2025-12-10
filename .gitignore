@@ -1,0 +1,39 @@
+# Composer
+# Note: vendor/ is committed for FTP-only deployment (no SSH access)
+# Only composer.lock is ignored
+composer.lock
+
+# Config
+config.ini
+*.local.ini
+db.php
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+error.log
+
+# Output
+import/
+export/
+*.csv
+*.json
+!example.csv
+
+# ZIP Archives
+*.zip
+!example.zip
+
+# Sessions
+sessions/
+
+# OS
+.DS_Store
+Thumbs.db
