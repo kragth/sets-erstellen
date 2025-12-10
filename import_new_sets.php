@@ -62,8 +62,11 @@ require_once 'db.php';
 // Properties (Eigenschafts-IDs), die komplett ignoriert werden sollen.
 // Diese IDs werden weder gezählt noch in PropertyIds/PropertyValues exportiert.
 $ignorePropIds = array_map('strval', [
-    '166', '167', '168', '169', '170', '171',
-    // hier hast du in deinem Stand bereits weitere IDs ergänzt
+    162, 166, 167, 168, 169, 170, 171,
+    175, 176, 177, 178, 179, 180,
+    182, 183, 184, 187, 188, 189,
+    192, 194, 195, 196, 198, 200,
+    267, 268
 ]);
 
 /**
