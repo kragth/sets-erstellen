@@ -284,7 +284,16 @@ if (count($updatedJobs) > 0) {
             }
 
             // Bild-URLs sammeln (falls vorhanden)
-            if (!empty($itemMap[$vid]['ImageUrls'])) $ImageUrls[] = trim($itemMap[$vid]['ImageUrls']);
+            // WICHTIG: ImageUrls in DB sind KOMMA-getrennt, einzeln ins Array aufnehmen
+            if (!empty($itemMap[$vid]['ImageUrls'])) {
+                $urlParts = explode(',', $itemMap[$vid]['ImageUrls']);
+                foreach ($urlParts as $url) {
+                    $url = trim($url);
+                    if ($url !== '') {
+                        $ImageUrls[] = $url;
+                    }
+                }
+            }
 
             // Beschreibung anhängen (HTML-Entity-Decoding, Segmenttrennung via <br><br>)
             $beschreibung = html_entity_decode($descRows[$vid] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
