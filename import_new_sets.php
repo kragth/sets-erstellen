@@ -21,7 +21,7 @@
 * - Exporte erstellen:
 *     • Komponenten-CSV: je Komponente eine Zeile
 *     • Weitere-Daten-CSV: je Set genau eine Zeile
-*         - ImageUrls aus Items gesammelt (per ";" zusammengeführt)
+*         - ImageUrls aus Items gesammelt (per "," zusammengeführt, Synesty erwartet Komma)
 *         - Beschreibung aus Items_Beschreibung (HTML-entities decodiert, segmentweise verknüpft)
 *         - Brutto-Setpreis:
 *             -> Wenn mindestens eine Komponente keinen BruttoMindestpreisKH24 hat → Setpreis = 0
@@ -389,7 +389,7 @@ if (count($updatedJobs) > 0) {
             $job['new_item_id'],
             $job['new_variant_id'],
             $job['set_type'],
-            implode(';', $ImageUrls),
+            implode(',', $ImageUrls),  // KOMMA-getrennt für Synesty (siehe API-Doku)
             $BeschreibungHTML,
             $bruttoSet,
             $job['requested_by'], // numerische ID
