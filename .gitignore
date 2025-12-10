@@ -20,9 +20,17 @@ db.php
 logs/
 error.log
 
-# Output
-import/
-export/
+# Output - Ordnerstruktur behalten, Inhalt ignorieren
+import/*
+!import/.gitkeep
+!import/archive/
+import/archive/*
+!import/archive/.gitkeep
+export/*
+!export/.gitkeep
+!export/archive/
+export/archive/*
+!export/archive/.gitkeep
 *.csv
 *.json
 !example.csv
