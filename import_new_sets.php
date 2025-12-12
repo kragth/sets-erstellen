@@ -284,6 +284,17 @@ if (count($updatedJobs) > 0) {
             'RealTiefstpreisKH24' => 0.0,
             'B2B' => 0.0
         ];
+        // Zähler: Wie viele Komponenten haben den jeweiligen Preis?
+        $setPreiseCount = [
+            'UVP' => 0,
+            'ShopPreisKH24' => 0,
+            'EbayPreisKH24' => 0,
+            'AmazonPreisKH24' => 0,
+            'PreisManuelleEingabe' => 0,
+            'RealPreisKH24' => 0,
+            'RealTiefstpreisKH24' => 0,
+            'B2B' => 0
+        ];
 
         // Properties: setweite Erfassung
         $propOccur     = []; // id => Anzahl Komponenten, in denen die ID vorkommt
@@ -310,11 +321,12 @@ if (count($updatedJobs) > 0) {
                 $gesamtNettoOhneVersand += $nettoOhneVersand;
             }
 
-            // Zusätzliche Preise summieren (nur wenn > 0)
+            // Zusätzliche Preise summieren und zählen (nur wenn > 0)
             foreach ($setPreise as $preisKey => $dummy) {
                 $p = floatval($kompPreise[$preisKey] ?? 0);
                 if ($p > 0) {
                     $setPreise[$preisKey] += $p;
+                    $setPreiseCount[$preisKey]++;
                 }
             }
 
@@ -396,12 +408,16 @@ if (count($updatedJobs) > 0) {
             $bruttoSet = number_format($bruttoSet, 2, '.', '');
         }
 
-        // Zusätzliche Set-Preise: 10% Aufschlag auf Summe, formatieren (0 wenn Summe = 0)
+        // Zusätzliche Set-Preise: 10% Aufschlag auf Summe
+        // NUR wenn ALLE Komponenten den Preis haben, sonst leer lassen
+        $anzahlKomponenten = count($components);
         foreach ($setPreise as $preisKey => $summe) {
-            if ($summe > 0) {
+            if ($summe > 0 && $setPreiseCount[$preisKey] === $anzahlKomponenten) {
+                // Alle Komponenten haben diesen Preis → Summe + 10%
                 $setPreise[$preisKey] = number_format($summe * 1.10, 2, '.', '');
             } else {
-                $setPreise[$preisKey] = '';  // Leer lassen wenn keine Komponente den Preis hatte
+                // Nicht alle Komponenten haben den Preis → leer lassen
+                $setPreise[$preisKey] = '';
             }
         }
 
