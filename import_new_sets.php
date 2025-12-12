@@ -190,11 +190,13 @@ if (count($updatedJobs) > 0) {
     fputcsv($csvHandleKomponenten, $csvHeaderKomponenten, ';', '"', "\\");
 
     // --- CSV 2: Weitere-Daten-Export (je Set genau eine Zeile) ---
-    //   Neu: PropertyIds, PropertyValues
+    //   Neu: PropertyIds, PropertyValues, zusätzliche Set-Preise
     $csvHeaderWeitere = [
         'SetItemID', 'SetVariantID', 'SetType',
         'ImageUrls', 'BeschreibungHTML', 'BruttoMindestpreisSet',
-        'RequestedByID', 'PropertyIds', 'PropertyValues'
+        'RequestedByID', 'PropertyIds', 'PropertyValues',
+        'SetUVP', 'SetShopPreisKH24', 'SetEbayPreisKH24', 'SetAmazonPreisKH24',
+        'SetPreisManuelleEingabe', 'SetRealPreisKH24', 'SetRealTiefstpreisKH24', 'SetB2B'
     ];
     $csvHandleWeitere = fopen($csvFileWeitere, 'w');
     fputcsv($csvHandleWeitere, $csvHeaderWeitere, ';', '"', "\\");
@@ -250,10 +252,19 @@ if (count($updatedJobs) > 0) {
         $descStmt->execute($variantIDs);
         $descRows = $descStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        // Preise je Variante (BruttoMindestpreisKH24)
-        $preisStmt = $pdo->prepare("SELECT VariantID, BruttoMindestpreisKH24 FROM Items_Preise WHERE VariantID IN ($in)");
+        // Preise je Variante (alle benötigten Preisspalten)
+        $preisStmt = $pdo->prepare("
+            SELECT VariantID, BruttoMindestpreisKH24, UVP, ShopPreisKH24, EbayPreisKH24,
+                   AmazonPreisKH24, PreisManuelleEingabe, RealPreisKH24, RealTiefstpreisKH24, B2B
+            FROM Items_Preise WHERE VariantID IN ($in)
+        ");
         $preisStmt->execute($variantIDs);
-        $preisRows = $preisStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $preisRowsFull = $preisStmt->fetchAll(PDO::FETCH_ASSOC);
+        // Mapping VariantID => Preisdaten
+        $preisMap = [];
+        foreach ($preisRowsFull as $pr) {
+            $preisMap[$pr['VariantID']] = $pr;
+        }
 
         // Aggregationscontainer
         $ImageUrls = [];
@@ -261,6 +272,29 @@ if (count($updatedJobs) > 0) {
         $gesamtNettoOhneVersand = 0.0;
         $gesamtGewicht = 0.0;
         $fehlendePreise = [];
+
+        // Zusätzliche Set-Preise (Summe der Komponenten, nur wenn > 0)
+        $setPreise = [
+            'UVP' => 0.0,
+            'ShopPreisKH24' => 0.0,
+            'EbayPreisKH24' => 0.0,
+            'AmazonPreisKH24' => 0.0,
+            'PreisManuelleEingabe' => 0.0,
+            'RealPreisKH24' => 0.0,
+            'RealTiefstpreisKH24' => 0.0,
+            'B2B' => 0.0
+        ];
+        // Zähler: Wie viele Komponenten haben den jeweiligen Preis?
+        $setPreiseCount = [
+            'UVP' => 0,
+            'ShopPreisKH24' => 0,
+            'EbayPreisKH24' => 0,
+            'AmazonPreisKH24' => 0,
+            'PreisManuelleEingabe' => 0,
+            'RealPreisKH24' => 0,
+            'RealTiefstpreisKH24' => 0,
+            'B2B' => 0
+        ];
 
         // Properties: setweite Erfassung
         $propOccur     = []; // id => Anzahl Komponenten, in denen die ID vorkommt
@@ -275,7 +309,8 @@ if (count($updatedJobs) > 0) {
             $gesamtGewicht += $weight;
 
             // Preislogik: wenn Komponente keinen BruttoMindestpreis hat → später Setpreis = 0
-            $bruttoPreis = floatval($preisRows[$vid] ?? 0);
+            $kompPreise = $preisMap[$vid] ?? [];
+            $bruttoPreis = floatval($kompPreise['BruttoMindestpreisKH24'] ?? 0);
             if ($bruttoPreis <= 0) {
                 $fehlendePreise[] = $vid;
             } else {
@@ -284,6 +319,15 @@ if (count($updatedJobs) > 0) {
                 $versand = berechneVersandkosten($weight);
                 $nettoOhneVersand = max(0, $netto - $versand);
                 $gesamtNettoOhneVersand += $nettoOhneVersand;
+            }
+
+            // Zusätzliche Preise summieren und zählen (nur wenn > 0)
+            foreach ($setPreise as $preisKey => $dummy) {
+                $p = floatval($kompPreise[$preisKey] ?? 0);
+                if ($p > 0) {
+                    $setPreise[$preisKey] += $p;
+                    $setPreiseCount[$preisKey]++;
+                }
             }
 
             // Bild-URLs sammeln (falls vorhanden)
@@ -364,6 +408,19 @@ if (count($updatedJobs) > 0) {
             $bruttoSet = number_format($bruttoSet, 2, '.', '');
         }
 
+        // Zusätzliche Set-Preise: 10% Aufschlag auf Summe
+        // NUR wenn ALLE Komponenten den Preis haben, sonst leer lassen
+        $anzahlKomponenten = count($components);
+        foreach ($setPreise as $preisKey => $summe) {
+            if ($summe > 0 && $setPreiseCount[$preisKey] === $anzahlKomponenten) {
+                // Alle Komponenten haben diesen Preis → Summe + 10%
+                $setPreise[$preisKey] = number_format($summe * 1.10, 2, '.', '');
+            } else {
+                // Nicht alle Komponenten haben den Preis → leer lassen
+                $setPreise[$preisKey] = '';
+            }
+        }
+
         // --- Set-weite Property-Ausgabe ---
         // Regel:
         // - ID immer ausgeben
@@ -397,7 +454,16 @@ if (count($updatedJobs) > 0) {
             $bruttoSet,
             $job['requested_by'], // numerische ID
             implode(';', $outIds),
-            implode(';', $outVals)
+            implode(';', $outVals),
+            // Zusätzliche Set-Preise (Summe + 10%)
+            $setPreise['UVP'],
+            $setPreise['ShopPreisKH24'],
+            $setPreise['EbayPreisKH24'],
+            $setPreise['AmazonPreisKH24'],
+            $setPreise['PreisManuelleEingabe'],
+            $setPreise['RealPreisKH24'],
+            $setPreise['RealTiefstpreisKH24'],
+            $setPreise['B2B']
         ], ';', '"', "\\");
     }
 
